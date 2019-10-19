@@ -9,6 +9,8 @@ public class PowderSim : MonoBehaviour {
 		public enum Type {
 			AIR,
 			WOOD,
+			STONE,
+			TEST
 		}
 
 		public Type type;

@@ -2,7 +2,7 @@
 {
     Properties
     {
-		_WoodTex ("WoodTex", 2D) = "white" {}
+		_TexArray ("TexArray", 2DArray) = "" {}
 		_ShadingTex ("ShadingTex", 2D) = "white" {}
     }
     SubShader
@@ -18,6 +18,9 @@
             CGPROGRAM
             #pragma vertex vert
             #pragma fragment frag
+			// texture arrays are not available everywhere,
+			// only compile shader on platforms where they are
+			#pragma require 2darray
 
             #include "UnityCG.cginc"
 
@@ -37,8 +40,9 @@
 			float _ShadingScale;
 			float2 _Resolution;
 
+			UNITY_DECLARE_TEX2DARRAY(_TexArray);
+
 			sampler2D _CellsTex;
-			sampler2D _WoodTex;
 			sampler2D _ShadingTex;
 
             v2f vert (appdata v)
@@ -74,7 +78,7 @@
 					return fixed4(0, 0, 0, 0);
 				}
 
-				fixed4 col = tex2D(_WoodTex, i.uv * _Resolution / _TexScale);
+				fixed4 col = UNITY_SAMPLE_TEX2DARRAY(_TexArray, float3(i.uv * _Resolution / _TexScale, cell_type - 1));
 				
 				col.rgb *= calc_shading(i, cell_type);
 

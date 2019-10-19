@@ -64,6 +64,10 @@ Material:
         m_Texture: {fileID: 2800000, guid: 5a034d2ab68f94b499ae626639370a5c, type: 3}
         m_Scale: {x: 1, y: 1}
         m_Offset: {x: 0, y: 0}
+    - _TexArray:
+        m_Texture: {fileID: 0}
+        m_Scale: {x: 1, y: 1}
+        m_Offset: {x: 0, y: 0}
     - _WoodTex:
         m_Texture: {fileID: 2800000, guid: d20d6081faa0b944890c1247a54aa832, type: 3}
         m_Scale: {x: 1, y: 1}
