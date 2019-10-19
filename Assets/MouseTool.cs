@@ -15,8 +15,22 @@ public class MouseTool : MonoBehaviour {
 	public float MouseScrollDeltaSens = 0.5f;
 
 
-	public PowderSim.Cell.Type DrawType = PowderSim.Cell.Type.WOOD;
+	public PowderSim.Cell.MaterialID DrawMaterial = PowderSim.Cell.MaterialID.WOOD;
 	public float DrawSize = 5f;
+
+	int? NumberKeyDown () {
+		if (     Input.GetKeyDown(KeyCode.Alpha0))	return 0;
+		else if (Input.GetKeyDown(KeyCode.Alpha1))	return 1;
+		else if (Input.GetKeyDown(KeyCode.Alpha2))	return 2;
+		else if (Input.GetKeyDown(KeyCode.Alpha3))	return 3;
+		else if (Input.GetKeyDown(KeyCode.Alpha4))	return 4;
+		else if (Input.GetKeyDown(KeyCode.Alpha5))	return 5;
+		else if (Input.GetKeyDown(KeyCode.Alpha6))	return 6;
+		else if (Input.GetKeyDown(KeyCode.Alpha7))	return 7;
+		else if (Input.GetKeyDown(KeyCode.Alpha8))	return 8;
+		else if (Input.GetKeyDown(KeyCode.Alpha9))	return 9;
+		else return null;
+	}
 
 	void Update () {
 		var plane = new Plane(new Vector3(0, 0, -1), 0);
@@ -40,10 +54,18 @@ public class MouseTool : MonoBehaviour {
 			MeshRenderer.material.SetFloat("_Thickness", 0.33f*2 / DrawSize);
 		}
 
+		var num_key = NumberKeyDown();
+		if (num_key.HasValue) {
+			if (num_key.Value == 0)
+				DrawMaterial = (PowderSim.Cell.MaterialID)10;
+			else
+				DrawMaterial = (PowderSim.Cell.MaterialID)num_key;
+		}
+
 		if (Input.GetMouseButton(0)) { // Draw
-			Draw(DrawType);
+			Draw(DrawMaterial);
 		} else if (Input.GetMouseButton(1)) { // Erase
-			Draw(PowderSim.Cell.Type.AIR);
+			Draw(PowderSim.Cell.MaterialID.AIR);
 		} else {
 			draw_prev_frame = false;
 		}
@@ -53,7 +75,7 @@ public class MouseTool : MonoBehaviour {
 	float2 prev_center;
 	float  prev_radius;
 
-	void Draw (PowderSim.Cell.Type Type) {
+	void Draw (PowderSim.Cell.MaterialID Type) {
 		float2 cur_center = ((float3)Sim.transform.InverseTransformPoint(transform.position)).xy + 0.5f;
 		float  cur_radius = ((float3)Sim.transform.InverseTransformVector(transform.localScale)).y / 2;
 
@@ -77,7 +99,7 @@ public class MouseTool : MonoBehaviour {
 			for (int y=a.y; y<b.y; ++y) {
 				for (int x=a.x; x<b.x; ++x) {
 					if (distance(float2(x,y) + 0.5f, center) <= radius + 0.2f)
-						Sim.Cells[y,x] = new PowderSim.Cell { type = Type };
+						Sim.Cells[y,x] = new PowderSim.Cell { mat = Type };
 				}
 			}
 

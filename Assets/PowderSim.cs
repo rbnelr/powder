@@ -6,16 +6,16 @@ using Unity.Mathematics;
 
 public class PowderSim : MonoBehaviour {
 	public struct Cell {
-		public enum Type {
+		public enum MaterialID {
 			AIR,
 			WOOD,
 			STONE,
 			TEST
 		}
 
-		public Type type;
+		public MaterialID mat;
 
-		public override string ToString () => type.ToString();
+		public override string ToString () => mat.ToString();
 	}
 	
 	public int2 Resolution = int2(300, 200);
@@ -66,7 +66,7 @@ public class PowderSim : MonoBehaviour {
 		if (Reset) {
 			for (int y=0; y<Resolution.y; ++y) {
 				for (int x=0; x<Resolution.x; ++x) {
-					Cells[y,x] = new Cell { type = Cell.Type.AIR };
+					Cells[y,x] = new Cell { mat = Cell.MaterialID.AIR };
 				}
 			}
 
@@ -75,7 +75,7 @@ public class PowderSim : MonoBehaviour {
 		
 		for (int y=0; y<Resolution.y; ++y) {
 			for (int x=0; x<Resolution.x; ++x) {
-				Pixels[y * Resolution.x + x] = (byte)Cells[y,x].type;
+				Pixels[y * Resolution.x + x] = (byte)Cells[y,x].mat;
 			//	Pixels[y * Resolution.x + x] = ((x % 2) ^ (y % 2)) == 0 ? new Color32(255, 0, 0, 255) : new Color32(0, 0, 255, 0);
 			}
 		}

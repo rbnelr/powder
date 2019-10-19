@@ -15,6 +15,6 @@ public class TextureArrayCreator : MonoBehaviour {
 		for (int i=0; i<Textures.Length; ++i)
 			Graphics.CopyTexture(Textures[i], 0, 0, arr, i, 0);
 
-		AssetDatabase.CreateAsset(arr, "Assets/TextureArray.asset");
+		AssetDatabase.CreateAsset(arr, "Assets/MaterialTexArray.asset");
 	}
 }

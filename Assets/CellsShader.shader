@@ -2,7 +2,7 @@
 {
     Properties
     {
-		_TexArray ("TexArray", 2DArray) = "" {}
+		_MaterialTexArray ("MaterialTexArray", 2DArray) = "" {}
 		_ShadingTex ("ShadingTex", 2D) = "white" {}
     }
     SubShader
@@ -40,7 +40,7 @@
 			float _ShadingScale;
 			float2 _Resolution;
 
-			UNITY_DECLARE_TEX2DARRAY(_TexArray);
+			UNITY_DECLARE_TEX2DARRAY(_MaterialTexArray);
 
 			sampler2D _CellsTex;
 			sampler2D _ShadingTex;
@@ -78,7 +78,7 @@
 					return fixed4(0, 0, 0, 0);
 				}
 
-				fixed4 col = UNITY_SAMPLE_TEX2DARRAY(_TexArray, float3(i.uv * _Resolution / _TexScale, cell_type - 1));
+				fixed4 col = UNITY_SAMPLE_TEX2DARRAY(_MaterialTexArray, float3(i.uv * _Resolution / _TexScale, cell_type - 1));
 				
 				col.rgb *= calc_shading(i, cell_type);
 
