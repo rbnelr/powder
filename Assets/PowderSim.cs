@@ -17,30 +17,38 @@ public class PowderSim : MonoBehaviour {
 	}
 	
 	public int2 Resolution = int2(300, 200);
+	public int TexScale = 2;
+	public float ShadingScale = 2;
 
 	public Cell[,] Cells;
-	Color32[] Pixels;
+	byte[] Pixels;
 
 	Texture2D texture;
-
-	public Color32[] CellTypeColors;
 
 	public bool Reset = true;
 
 	public GameObject Background;
 
+	MeshRenderer MeshRenderer;
+	private void Start () {
+		MeshRenderer = GetComponent<MeshRenderer>();
+	}
 	void Update () {
 		Resolution = max(Resolution, 1);
 
 		if (Cells == null || Cells.GetLength(1) != Resolution.x || Cells.GetLength(0) != Resolution.y) {
 			Cells = new Cell[Resolution.y, Resolution.x];
-			Pixels = new Color32[Resolution.y * Resolution.x];
+			Pixels = new byte[Resolution.y * Resolution.x];
 
-			texture = new Texture2D(Resolution.x, Resolution.y, TextureFormat.RGBA32, false, false);
+			texture = new Texture2D(Resolution.x, Resolution.y, TextureFormat.R8, false, false);
 			texture.filterMode = FilterMode.Point;
+			texture.wrapMode = TextureWrapMode.Clamp;
 			
-			GetComponent<MeshRenderer>().material.SetTexture("_MainTex", texture);
 		}
+		MeshRenderer.material.SetTexture("_CellsTex", texture);
+		MeshRenderer.material.SetVector("_Resolution", float4(Resolution, 0, 0));
+		MeshRenderer.material.SetFloat("_TexScale", 64f / (float)TexScale);
+		MeshRenderer.material.SetFloat("_ShadingScale", 1f / (float)ShadingScale);
 
 		// scale texture plane to make pixels non-stretched
 		float aspect = (float)Resolution.x / (float)Resolution.y;
@@ -65,12 +73,12 @@ public class PowderSim : MonoBehaviour {
 		
 		for (int y=0; y<Resolution.y; ++y) {
 			for (int x=0; x<Resolution.x; ++x) {
-				Pixels[y * Resolution.x + x] = CellTypeColors[ clamp((int)Cells[y,x].type, 0, CellTypeColors.Length -1) ];
+				Pixels[y * Resolution.x + x] = (byte)Cells[y,x].type;
 			//	Pixels[y * Resolution.x + x] = ((x % 2) ^ (y % 2)) == 0 ? new Color32(255, 0, 0, 255) : new Color32(0, 0, 255, 0);
 			}
 		}
 		
-		texture.SetPixels32(Pixels, 0);
+		texture.SetPixelData(Pixels, 0);
 		texture.Apply();
 	}
 }

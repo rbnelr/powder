@@ -411,13 +411,10 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   Resolution:
-    x: 300
-    y: 200
-  CellTypeColors:
-  - serializedVersion: 2
-    rgba: 16777215
-  - serializedVersion: 2
-    rgba: 4285576424
+    x: 150
+    y: 100
+  TexScale: 2
+  ShadingScale: 2
   Reset: 1
   Background: {fileID: 734376513}
 --- !u!23 &828722057
