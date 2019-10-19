@@ -125,12 +125,22 @@ public class PowderSim : MonoBehaviour {
 		CreateTexture();
 	}
 
+	public Texture2DArray MaterialTexArray;
+	public Texture2DArray ShadingTexArray;
+	public float[] MaterialTextureIndecies;
+	public float[] MaterialShadingModes;
+
 	void UpdateTexture () {
 		
 		MeshRenderer.sharedMaterial.SetTexture("_CellsTex", texture);
 		MeshRenderer.sharedMaterial.SetVector("_Resolution", float4(Resolution, 0, 0));
 		MeshRenderer.sharedMaterial.SetFloat("_TexScale", 64f / (float)TexScale);
 		MeshRenderer.sharedMaterial.SetFloat("_ShadingScale", 1f / (float)ShadingScale);
+		
+		MeshRenderer.sharedMaterial.SetTexture("_MaterialTexArray", MaterialTexArray);
+		MeshRenderer.sharedMaterial.SetTexture("_ShadingTexArray", ShadingTexArray);
+		MeshRenderer.sharedMaterial.SetFloatArray("_MaterialTextureIndecies", MaterialTextureIndecies);
+		MeshRenderer.sharedMaterial.SetFloatArray("_MaterialShadingModes", MaterialShadingModes);
 
 		// scale texture quad to make pixels non-stretched
 		float aspect = (float)Resolution.x / (float)Resolution.y;

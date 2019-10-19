@@ -3,7 +3,7 @@
     Properties
     {
 		_MaterialTexArray ("MaterialTexArray", 2DArray) = "" {}
-		_ShadingTex ("ShadingTex", 2D) = "white" {}
+		_ShadingTexArray ("ShadingTex", 2DArray) = "" {}
     }
     SubShader
     {
@@ -40,10 +40,13 @@
 			float _ShadingScale;
 			float2 _Resolution;
 
+			float _MaterialTextureIndecies[32];
+			float _MaterialShadingModes[32];
+
 			UNITY_DECLARE_TEX2DARRAY(_MaterialTexArray);
+			UNITY_DECLARE_TEX2DARRAY(_ShadingTexArray);
 
 			sampler2D _CellsTex;
-			sampler2D _ShadingTex;
 
             v2f vert (appdata v)
             {
@@ -53,34 +56,35 @@
                 return o;
             }
 
-			fixed3 calc_shading (v2f i, int cell_type) {
+			fixed4 calc_shading (v2f i, int mat_id, float shading_mode) {
 				int2 lb = int2((int)(tex2D(_CellsTex, i.uv + float2(-1, 0) / _Resolution * _ShadingScale).r * 255),
 					           (int)(tex2D(_CellsTex, i.uv + float2(0, -1) / _Resolution * _ShadingScale).r * 255)); // left and bottom cell
 				int2 rt = int2((int)(tex2D(_CellsTex, i.uv + float2(+1, 0) / _Resolution * _ShadingScale).r * 255),
 					           (int)(tex2D(_CellsTex, i.uv + float2(0, +1) / _Resolution * _ShadingScale).r * 255)); // right and top cell
 
 				float2 edge = 0;
-				edge -= lb != cell_type ? 1 : 0;
-				edge += rt != cell_type ? 1 : 0;
+				edge -= lb != mat_id ? 1 : 0;
+				edge += rt != mat_id ? 1 : 0;
 
-				if (any((lb != cell_type) && (rt != cell_type)))
+				if (shading_mode == 0.0 && any((lb != mat_id) && (rt != mat_id)))
 					edge = 0;
 
 				float2 edge_uv = (edge + 1.5) / 3.0; // (0,1,2) => (0.5, 1.5, 2.5) which are the pixel centers in the 3x3 shading tex
 
-				return tex2D(_ShadingTex, edge_uv).rgb * 2;
+				return UNITY_SAMPLE_TEX2DARRAY(_ShadingTexArray, float3(edge_uv, shading_mode)) * fixed4(2,2,2,1); // grey is neural color to so that white boosts color
 			}
 
 			fixed4 frag (v2f i) : SV_Target{
-				int cell_type = (int)(tex2D(_CellsTex, i.uv).r * 255);
+				int mat_id = (int)(tex2D(_CellsTex, i.uv).r * 255);
 
-				if (cell_type == 0) {
-					return fixed4(0, 0, 0, 0);
-				}
+				float tex_index = _MaterialTextureIndecies[mat_id];
+				float shading_mode = _MaterialShadingModes[mat_id];
 
-				fixed4 col = UNITY_SAMPLE_TEX2DARRAY(_MaterialTexArray, float3(i.uv * _Resolution / _TexScale, cell_type - 1));
+				clip(tex_index); // Invisible
+
+				fixed4 col = UNITY_SAMPLE_TEX2DARRAY(_MaterialTexArray, float3(i.uv * _Resolution / _TexScale, tex_index));
 				
-				col.rgb *= calc_shading(i, cell_type);
+				col *= calc_shading(i, mat_id, shading_mode);
 
 				return col;
             }
