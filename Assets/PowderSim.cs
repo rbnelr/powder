@@ -1,58 +1,138 @@
-﻿using System.Collections;
+﻿using System;
+using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 using static Unity.Mathematics.math;
 using Unity.Mathematics;
 
 public class PowderSim : MonoBehaviour {
+	
+	public enum MaterialID {
+		AIR,
+		WOOD,
+		STONE,
+		WATER,
+		OIL,
+		STEAM,
+		SMOKE,
+		TEST
+	}
+	
+	[Serializable]
 	public struct Cell {
-		public enum MaterialID {
-			AIR,
-			WOOD,
-			STONE,
-			TEST
-		}
 
 		public MaterialID mat;
 
 		public override string ToString () => mat.ToString();
 	}
 	
+	[Serializable]
+	public class Cells {
+		public int2 GetResolution () => int2(Array.GetLength(1), Array.GetLength(0));
+		public Cell[,] Array;
+		
+		public Cells (int2 resolution) {
+			Array = new Cell[resolution.y, resolution.x];
+		}
+	}
+	
 	public int2 Resolution = int2(300, 200);
 	public int TexScale = 2;
 	public float ShadingScale = 2;
 
-	public Cell[,] Cells;
+	[NonSerialized]
+	public Cells cells;
 	byte[] Pixels;
 
 	Texture2D texture;
 
+	public string LoadFileOnStart = @"D:\coding\powder\save_00.json";
+
 	public bool Reset = true;
+	public bool Save = false;
+	public bool Load = false;
 
 	public GameObject Background;
 
 	MeshRenderer MeshRenderer;
 	private void Start () {
 		MeshRenderer = GetComponent<MeshRenderer>();
+
+		if (LoadFileOnStart.Length != 0) {
+			if (Serialize.LoadFromFile("cells", LoadFileOnStart, out Cells cells)) {
+				Resolution = cells.GetResolution();
+				this.cells = cells;
+
+				CreateTexture();
+			}
+			Reset = false;
+		}
 	}
 	void Update () {
 		Resolution = max(Resolution, 1);
 
-		if (Cells == null || Cells.GetLength(1) != Resolution.x || Cells.GetLength(0) != Resolution.y) {
-			Cells = new Cell[Resolution.y, Resolution.x];
-			Pixels = new byte[Resolution.y * Resolution.x];
+		if (cells == null || any(cells.GetResolution() != Resolution))
+			Resize();
 
-			texture = new Texture2D(Resolution.x, Resolution.y, TextureFormat.R8, false, false);
-			texture.filterMode = FilterMode.Point;
-			texture.wrapMode = TextureWrapMode.Clamp;
-			
+		if (Reset)
+			clear();
+		if (Save || (Input.GetKey(KeyCode.LeftControl) && Input.GetKeyDown(KeyCode.S)))
+			Serialize.SaveToFileDialog("cells", cells);
+		if (Load || (Input.GetKey(KeyCode.LeftControl) && Input.GetKeyDown(KeyCode.L))) {
+			if (Serialize.LoadFromFileDialog("cells", out Cells cells)) {
+				Resolution = cells.GetResolution();
+				this.cells = cells;
+			}
 		}
-		MeshRenderer.material.SetTexture("_CellsTex", texture);
-		MeshRenderer.material.SetVector("_Resolution", float4(Resolution, 0, 0));
-		MeshRenderer.material.SetFloat("_TexScale", 64f / (float)TexScale);
-		MeshRenderer.material.SetFloat("_ShadingScale", 1f / (float)ShadingScale);
+		
+		Reset = false;
+		Save = false;
+		Load = false;
+		
+		UpdateTexture();
+	}
+	
+	void clear () {
+		for (int y=0; y<Resolution.y; ++y) {
+			for (int x=0; x<Resolution.x; ++x) {
+				cells.Array[y,x] = new Cell { mat = MaterialID.AIR };
+			}
+		}
+	}
 
-		// scale texture plane to make pixels non-stretched
+	void CreateTexture () {
+		Pixels = new byte[Resolution.y * Resolution.x];
+
+		texture = new Texture2D(Resolution.x, Resolution.y, TextureFormat.R8, false, false);
+		texture.filterMode = FilterMode.Point;
+		texture.wrapMode = TextureWrapMode.Clamp;
+	}
+	void Resize () {
+		var old_cells = cells;
+
+		cells = new Cells(Resolution);
+		Resolution = cells.GetResolution();
+
+		clear();
+		
+		// copy old cells where possible
+		for (int y=0; y<min(cells.GetResolution().y, old_cells.GetResolution().y); ++y) {
+			for (int x=0; x<min(cells.GetResolution().x, old_cells.GetResolution().x); ++x) {
+				cells.Array[y,x] = old_cells.Array[y,x];
+			}
+		}
+
+		CreateTexture();
+	}
+
+	void UpdateTexture () {
+		
+		MeshRenderer.sharedMaterial.SetTexture("_CellsTex", texture);
+		MeshRenderer.sharedMaterial.SetVector("_Resolution", float4(Resolution, 0, 0));
+		MeshRenderer.sharedMaterial.SetFloat("_TexScale", 64f / (float)TexScale);
+		MeshRenderer.sharedMaterial.SetFloat("_ShadingScale", 1f / (float)ShadingScale);
+
+		// scale texture quad to make pixels non-stretched
 		float aspect = (float)Resolution.x / (float)Resolution.y;
 
 		var scale = this.transform.localScale;
@@ -62,20 +142,11 @@ public class PowderSim : MonoBehaviour {
 		// fix backround texture stretching
 		float background_aspect = 16f / 9f;
 		Background.GetComponent<MeshRenderer>().material.SetVector("_BaseMap_ST", float4(aspect / background_aspect, 1, 0.5f - aspect / background_aspect / 2, 0));
-
-		if (Reset) {
-			for (int y=0; y<Resolution.y; ++y) {
-				for (int x=0; x<Resolution.x; ++x) {
-					Cells[y,x] = new Cell { mat = Cell.MaterialID.AIR };
-				}
-			}
-
-			Reset = false;
-		}
 		
+		//
 		for (int y=0; y<Resolution.y; ++y) {
 			for (int x=0; x<Resolution.x; ++x) {
-				Pixels[y * Resolution.x + x] = (byte)Cells[y,x].mat;
+				Pixels[y * Resolution.x + x] = (byte)cells.Array[y,x].mat;
 			//	Pixels[y * Resolution.x + x] = ((x % 2) ^ (y % 2)) == 0 ? new Color32(255, 0, 0, 255) : new Color32(0, 0, 255, 0);
 			}
 		}

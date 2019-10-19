@@ -15,7 +15,7 @@ public class MouseTool : MonoBehaviour {
 	public float MouseScrollDeltaSens = 0.5f;
 
 
-	public PowderSim.Cell.MaterialID DrawMaterial = PowderSim.Cell.MaterialID.WOOD;
+	public PowderSim.MaterialID DrawMaterial = PowderSim.MaterialID.WOOD;
 	public float DrawSize = 5f;
 
 	int? NumberKeyDown () {
@@ -57,15 +57,15 @@ public class MouseTool : MonoBehaviour {
 		var num_key = NumberKeyDown();
 		if (num_key.HasValue) {
 			if (num_key.Value == 0)
-				DrawMaterial = (PowderSim.Cell.MaterialID)10;
+				DrawMaterial = (PowderSim.MaterialID)10;
 			else
-				DrawMaterial = (PowderSim.Cell.MaterialID)num_key;
+				DrawMaterial = (PowderSim.MaterialID)num_key;
 		}
 
 		if (Input.GetMouseButton(0)) { // Draw
 			Draw(DrawMaterial);
 		} else if (Input.GetMouseButton(1)) { // Erase
-			Draw(PowderSim.Cell.MaterialID.AIR);
+			Draw(PowderSim.MaterialID.AIR);
 		} else {
 			draw_prev_frame = false;
 		}
@@ -75,7 +75,7 @@ public class MouseTool : MonoBehaviour {
 	float2 prev_center;
 	float  prev_radius;
 
-	void Draw (PowderSim.Cell.MaterialID Type) {
+	void Draw (PowderSim.MaterialID Type) {
 		float2 cur_center = ((float3)Sim.transform.InverseTransformPoint(transform.position)).xy + 0.5f;
 		float  cur_radius = ((float3)Sim.transform.InverseTransformVector(transform.localScale)).y / 2;
 
@@ -99,7 +99,7 @@ public class MouseTool : MonoBehaviour {
 			for (int y=a.y; y<b.y; ++y) {
 				for (int x=a.x; x<b.x; ++x) {
 					if (distance(float2(x,y) + 0.5f, center) <= radius + 0.2f)
-						Sim.Cells[y,x] = new PowderSim.Cell { mat = Type };
+						Sim.cells.Array[y,x] = new PowderSim.Cell { mat = Type };
 				}
 			}
 
