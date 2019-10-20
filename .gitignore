@@ -4,6 +4,7 @@
 !.gitignore
 !/Assets/
 !/ProjectSettings/
+!/Packages/
 
 *.exe
 *.dll

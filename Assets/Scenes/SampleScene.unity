@@ -530,6 +530,8 @@ MonoBehaviour:
   - 0
   - 0
   WaterFluidity: 0.9
+  SteamCondense: 10000
+  SmokeDissapate: 500
 --- !u!23 &828722057
 MeshRenderer:
   m_ObjectHideFlags: 0

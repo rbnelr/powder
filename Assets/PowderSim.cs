@@ -275,6 +275,12 @@ public class PowderSim : MonoBehaviour {
 				Down(int2(x,y));
 			}
 		}
+
+		for (int y=0; y<Resolution.y; ++y) {
+			for (int x=0; x<Resolution.x; ++x) {
+				Chemistry(int2(x,y));
+			}
+		}
 	}
 
 	void Down (int2 pos) {
@@ -332,6 +338,32 @@ public class PowderSim : MonoBehaviour {
 
 		if (c.type == Type.POWDER && !c.moved && (rb.type != Type.SOLID && c.density > rb.density) && !rb.moved && rand.NextFloat() < MoveChance) {
 			Swap(ref c, ref rb);
+		}
+		
+		SetNeighborhood(pos, c, l, r, b, t, lb, rb);
+	}
+
+	public float SteamCondense = 20000;
+	public float SmokeDissapate = 2000;
+	
+	void Chemistry (int2 pos) {
+		GetNeighborhood(pos, out Cell c, out Cell l, out Cell r, out Cell b, out Cell t, out Cell lb, out Cell rb);
+		
+		switch (c.mat) {
+
+			case MaterialID.STEAM: {
+				if (rand.NextFloat() < (1f / SteamCondense)) {
+					c.mat = MaterialID.WATER;
+				}
+			} break;
+
+			case MaterialID.SMOKE: {
+				if (rand.NextFloat() < (1f / SmokeDissapate)) {
+					c.mat = MaterialID.AIR;
+				}
+			} break;
+
+			default: break;
 		}
 		
 		SetNeighborhood(pos, c, l, r, b, t, lb, rb);
