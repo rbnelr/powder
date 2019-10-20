@@ -183,9 +183,18 @@ public class PowderSim : MonoBehaviour {
 	}
 
 	void Simulate () {
-		for (int y=0; y<Resolution.y; ++y) {
-			for (int x=0; x<Resolution.x; ++x) {
-				cells.Array[y,x] = SimulateCell(int2(x,y));
+		// Anti water flow bias (water bubbles always flow to the left first if we update left to right)
+		if (rand.NextBool()) {
+			for (int y=0; y<Resolution.y; ++y) {
+				for (int x=0; x<Resolution.x; ++x) {
+					cells.Array[y,x] = SimulateCell(int2(x,y));
+				}
+			}
+		} else {
+			for (int y=0; y<Resolution.y; ++y) {
+				for (int x=Resolution.x-1; x>=0; --x) {
+					cells.Array[y,x] = SimulateCell(int2(x,y));
+				}
 			}
 		}
 	}
