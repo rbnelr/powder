@@ -9,38 +9,71 @@ using Newtonsoft.Json.Converters;
 
 public class PowderSim : MonoBehaviour {
 	
+	public enum Type {
+		GAS,
+		LIQUID,
+		SOLID,
+		POWDER,
+	}
+
     [JsonConverter(typeof(StringEnumConverter))]
 	public enum MaterialID {
 		_NULL,
 
-		AIR,
 		WOOD,
 		STONE,
-		WATER,
-		OIL,
+
+		SAND,
+
+		AIR,
 		STEAM,
 		SMOKE,
 		FLAME,
-		SAND,
-	}
-	public readonly bool[] IsFluid = new bool[] {
-		false,
 
-		true,
-		false,
-		false,
-		true,
-		true,
-		true,
-		true,
-		false,
-		false,
+		WATER,
+		OIL,
+	}
+	public static readonly Type[] Types = new Type[] {
+		Type.SOLID,
+
+		Type.SOLID,
+		Type.SOLID,
+
+		Type.POWDER,
+
+		Type.GAS,
+		Type.GAS,
+		Type.GAS,
+		Type.GAS,
+		
+		Type.LIQUID,
+		Type.LIQUID,
+	};
+	public static readonly float[] Density = new float[] {
+		float.PositiveInfinity,
+
+		5f,
+		40f,
+
+		20f,
+		
+		10f / 1000,
+		6f / 1000,
+		8f / 1000,
+		8f / 1000,
+
+		10f,
+		9f,
 	};
 	
 	[Serializable]
 	public struct Cell {
 
 		public MaterialID mat;
+		public bool moved;
+
+		public Type type => Types[(int)mat];
+		public float density => Density[(int)mat];
 
 		public override string ToString () => mat.ToString();
 	}
@@ -71,6 +104,7 @@ public class PowderSim : MonoBehaviour {
 	public bool Clear, SaveDialog, LoadDialog;
 
 	public bool PauseSimulation = false;
+	public bool StepSimulation = false;
 
 	public GameObject Background;
 
@@ -96,10 +130,11 @@ public class PowderSim : MonoBehaviour {
 		if (LoadDialog || (Input.GetKey(KeyCode.LeftControl) && Input.GetKeyDown(KeyCode.L)))
 			load();
 		
-		if (!PauseSimulation)
+		if (!PauseSimulation || StepSimulation)
 			Simulate();
+		StepSimulation = false;
 
-		UpdateTexture();
+		DrawCells();
 	}
 	
 	void reset () {
@@ -169,7 +204,7 @@ public class PowderSim : MonoBehaviour {
 
 	int2 TexSize => int2(MaterialTexArray.width, MaterialTexArray.height);
 
-	void UpdateTexture () {
+	void DrawCells () {
 
 		MeshRenderer.sharedMaterial.SetTexture("_CellsTex", texture);
 		MeshRenderer.sharedMaterial.SetVector("_TexScale",				float4((float2)Resolution * TexScale / TexSize, 0,0));
@@ -194,80 +229,168 @@ public class PowderSim : MonoBehaviour {
 		//
 		for (int y=0; y<Resolution.y; ++y) {
 			for (int x=0; x<Resolution.x; ++x) {
-				Pixels[y * Resolution.x + x] = (byte)cells.Array[y,x].mat;
+				var c = cells.Array[y,x];
+				Pixels[y * Resolution.x + x] = (byte)c.mat;
+
+				c.moved = false;
+				cells.Array[y,x] = c;
 			}
 		}
 		
 		texture.SetPixelData(Pixels, 0);
 		texture.Apply();
 	}
+	
+	public float WaterFluidity = 0.9f;
+
+	Unity.Mathematics.Random rand = new Unity.Mathematics.Random(12345);
 
 	void Simulate () {
 		for (int y=0; y<Resolution.y; ++y) {
 			for (int x=0; x<Resolution.x; ++x) {
-				cells.Array[y,x] = SimulateCell(int2(x,y));
+				Down(int2(x,y));
+			}
+		}
+
+		for (int y=0; y<Resolution.y; ++y) {
+			for (int x=0; x<Resolution.x; ++x) {
+				Up(int2(x,y));
+			}
+		}
+
+		for (int y=0; y<Resolution.y; ++y) {
+			for (int x=0; x<Resolution.x; ++x) {
+				DiagonalLeft(int2(x,y));
+			}
+		}
+		for (int y=0; y<Resolution.y; ++y) {
+			for (int x=0; x<Resolution.x; ++x) {
+				DiagonalRight(int2(x,y));
+			}
+		}
+		
+		for (int y=0; y<Resolution.y; ++y) {
+			for (int x=0; x<Resolution.x; ++x) {
+				Left(int2(x,y));
+			}
+			for (int x=Resolution.x-1; x>=0; --x) {
+				Right(int2(x,y));
+			}
+		}
+		
+		for (int y=0; y<Resolution.y; ++y) {
+			for (int x=0; x<Resolution.x; ++x) {
+				Down(int2(x,y));
+			}
+		}
+
+		for (int y=0; y<Resolution.y; ++y) {
+			for (int x=0; x<Resolution.x; ++x) {
+				Up(int2(x,y));
 			}
 		}
 	}
 
-	Cell GetNeighbor (int2 pos) {
-		return all(pos >= 0) && all(pos < cells.GetResolution()) ? cells.Array[pos.y, pos.x] : new Cell { mat = MaterialID._NULL };
+	void Down (int2 pos) {
+		GetNeighborhood(pos, out Cell c, out Cell l, out Cell r, out Cell b, out Cell t, out Cell lb, out Cell rb);
+		if (c.mat == MaterialID.AIR) return;
+
+		if ((c.type == Type.LIQUID || c.type == Type.POWDER) && !c.moved && (b.type != Type.SOLID && c.density > b.density) && !b.moved) {
+			Swap(ref c, ref b);
+		}
+		
+		SetNeighborhood(pos, c, l, r, b, t, lb, rb);
 	}
-	void SetNeighbor (int2 pos, Cell c) {
-		if (all(pos >= 0) && all(pos < cells.GetResolution()))
-			cells.Array[pos.y, pos.x] = c;
+	void Left (int2 pos) {
+		GetNeighborhood(pos, out Cell c, out Cell l, out Cell r, out Cell b, out Cell t, out Cell lb, out Cell rb);
+		if (c.mat == MaterialID.AIR) return;
+
+		float MoveLeftChance = WaterFluidity / 2;
+
+		if ((c.type == Type.LIQUID || c.type == Type.GAS) && !c.moved && (l.type == Type.LIQUID || l.type == Type.GAS) && c.mat != l.mat && !l.moved && rand.NextFloat() < MoveLeftChance) {
+			Swap(ref c, ref l);
+		}
+
+		SetNeighborhood(pos, c, l, r, b, t, lb, rb);
+	}
+	void Right (int2 pos) {
+		GetNeighborhood(pos, out Cell c, out Cell l, out Cell r, out Cell b, out Cell t, out Cell lb, out Cell rb);
+		if (c.mat == MaterialID.AIR) return;
+		
+		float MoveRightChance = WaterFluidity / 2;
+		float DontMoveChance = 1f - WaterFluidity;
+		float MoveChance = MoveRightChance / (MoveRightChance + DontMoveChance);
+
+		if ((c.type == Type.LIQUID || c.type == Type.GAS) && !c.moved && (r.type == Type.LIQUID || r.type == Type.GAS) && c.mat != r.mat && !r.moved && rand.NextFloat() < MoveChance) {
+			Swap(ref c, ref r);
+		}
+		
+		SetNeighborhood(pos, c, l, r, b, t, lb, rb);
+	}
+	void Up (int2 pos) {
+		GetNeighborhood(pos, out Cell c, out Cell l, out Cell r, out Cell b, out Cell t, out Cell lb, out Cell rb);
+		if (c.mat == MaterialID.AIR) return;
+
+		if (c.type == Type.GAS && !c.moved && (t.type != Type.SOLID && c.density < t.density) && !t.moved) {
+			Swap(ref c, ref t);
+		}
+		
+		SetNeighborhood(pos, c, l, r, b, t, lb, rb);
+	}
+	void DiagonalLeft (int2 pos) {
+		GetNeighborhood(pos, out Cell c, out Cell l, out Cell r, out Cell b, out Cell t, out Cell lb, out Cell rb);
+		
+		float MoveLeftChance = WaterFluidity / 2;
+
+		if (c.type == Type.POWDER && !c.moved && (lb.type != Type.SOLID && c.density > lb.density) && !lb.moved && rand.NextFloat() < MoveLeftChance) {
+			Swap(ref c, ref lb);
+		}
+		
+		SetNeighborhood(pos, c, l, r, b, t, lb, rb);
+	}
+	void DiagonalRight (int2 pos) {
+		GetNeighborhood(pos, out Cell c, out Cell l, out Cell r, out Cell b, out Cell t, out Cell lb, out Cell rb);
+		
+		float MoveRightChance = WaterFluidity / 2;
+		float DontMoveChance = 1f - WaterFluidity;
+		float MoveChance = MoveRightChance / (MoveRightChance + DontMoveChance);
+
+		if (c.type == Type.POWDER && !c.moved && (rb.type != Type.SOLID && c.density > rb.density) && !rb.moved && rand.NextFloat() < MoveChance) {
+			Swap(ref c, ref rb);
+		}
+		
+		SetNeighborhood(pos, c, l, r, b, t, lb, rb);
+	}
+
+	void GetNeighborhood (int2 pos, out Cell c, out Cell l, out Cell r, out Cell b, out Cell t, out Cell lb, out Cell rb) {
+		c = cells.Array[pos.y, pos.x];
+
+		l = pos.x > 0              ? cells.Array[pos.y, pos.x -1] : new Cell { mat = MaterialID._NULL };
+		r = pos.x < Resolution.x-1 ? cells.Array[pos.y, pos.x +1] : new Cell { mat = MaterialID._NULL };
+		b = pos.y > 0              ? cells.Array[pos.y -1, pos.x] : new Cell { mat = MaterialID._NULL };
+		t = pos.y < Resolution.y-1 ? cells.Array[pos.y +1, pos.x] : new Cell { mat = MaterialID._NULL };
+		
+		lb = pos.y > 0 && pos.x > 0              ? cells.Array[pos.y -1, pos.x -1] : new Cell { mat = MaterialID._NULL };
+		rb = pos.y > 0 && pos.x < Resolution.x-1 ? cells.Array[pos.y -1, pos.x +1] : new Cell { mat = MaterialID._NULL };
+	}
+	void SetNeighborhood (int2 pos, Cell c, Cell l, Cell r, Cell b, Cell t, Cell lb, Cell rb) {
+		cells.Array[pos.y, pos.x] = c;
+
+		if (pos.x > 0             ) cells.Array[pos.y, pos.x -1] = l;
+		if (pos.x < Resolution.x-1) cells.Array[pos.y, pos.x +1] = r;
+		if (pos.y > 0             ) cells.Array[pos.y -1, pos.x] = b;
+		if (pos.y < Resolution.y-1) cells.Array[pos.y +1, pos.x] = t;
+
+		if (pos.y > 0 && pos.x > 0             ) cells.Array[pos.y -1, pos.x -1] = lb;
+		if (pos.y > 0 && pos.x < Resolution.x-1) cells.Array[pos.y -1, pos.x +1] = rb;
 	}
 
 	void Swap (ref Cell a, ref Cell b) {
 		var tmp = a;
 		a = b;
 		b = tmp;
-	}
 
-	public float WaterFluidity = 0.9f;
-
-	Unity.Mathematics.Random rand = new Unity.Mathematics.Random(12345);
-
-	Cell SimulateCell (int2 pos) {
-		Cell c = cells.Array[pos.y, pos.x];
-		
-		Cell l = GetNeighbor(pos + int2(-1,0));
-		Cell r = GetNeighbor(pos + int2(+1,0));
-		Cell b = GetNeighbor(pos + int2(0,-1));
-		Cell t = GetNeighbor(pos + int2(0,+1));
-
-		switch (c.mat) {
-			case MaterialID.WATER: {
-				if (IsFluid[(int)b.mat]) { // Flowing down if possible
-
-					Swap(ref c, ref b);
-
-				} else if (IsFluid[(int)l.mat] || IsFluid[(int)r.mat]) { // Flowing to sides
-
-					if (rand.NextFloat() < WaterFluidity) {
-						if (rand.NextBool()) {
-							if (IsFluid[(int)l.mat])
-								Swap(ref c, ref l);
-							else
-								Swap(ref c, ref r);
-						} else {
-							if (IsFluid[(int)r.mat])
-								Swap(ref c, ref r);
-							else
-								Swap(ref c, ref l);
-						}
-					}
-				}
-			} break;
-
-			default: break;
-		}
-		
-		SetNeighbor(pos + int2(-1,0), l);
-		SetNeighbor(pos + int2(+1,0), r);
-		SetNeighbor(pos + int2(0,-1), b);
-		SetNeighbor(pos + int2(0,+1), t);
-
-		return c;
+		a.moved = true && a.mat != MaterialID.AIR; // air can move freely to improve falling fluids
+		b.moved = true && b.mat != MaterialID.AIR;
 	}
 }
