@@ -15,7 +15,10 @@ public class PowderSim : MonoBehaviour {
 		OIL,
 		STEAM,
 		SMOKE,
-		TEST
+		FLAME,
+		SAND,
+
+		_NULL=255
 	}
 	
 	[Serializable]
@@ -89,6 +92,8 @@ public class PowderSim : MonoBehaviour {
 		Save = false;
 		Load = false;
 		
+		Simulate();
+
 		UpdateTexture();
 	}
 	
@@ -158,11 +163,79 @@ public class PowderSim : MonoBehaviour {
 		for (int y=0; y<Resolution.y; ++y) {
 			for (int x=0; x<Resolution.x; ++x) {
 				Pixels[y * Resolution.x + x] = (byte)cells.Array[y,x].mat;
-			//	Pixels[y * Resolution.x + x] = ((x % 2) ^ (y % 2)) == 0 ? new Color32(255, 0, 0, 255) : new Color32(0, 0, 255, 0);
 			}
 		}
 		
 		texture.SetPixelData(Pixels, 0);
 		texture.Apply();
+	}
+
+	void Simulate () {
+		for (int y=0; y<Resolution.y; ++y) {
+			for (int x=0; x<Resolution.x; ++x) {
+				cells.Array[y,x] = SimulateCell(int2(x,y));
+			}
+		}
+	}
+
+	Cell GetNeighbor (int2 pos) {
+		return all(pos >= 0) && all(pos < cells.GetResolution()) ? cells.Array[pos.y, pos.x] : new Cell { mat = MaterialID._NULL };
+	}
+	void SetNeighbor (int2 pos, Cell c) {
+		if (all(pos >= 0) && all(pos < cells.GetResolution()))
+			cells.Array[pos.y, pos.x] = c;
+	}
+
+	void Swap (ref Cell a, ref Cell b) {
+		var tmp = a;
+		a = b;
+		b = tmp;
+	}
+
+	public float WaterFluidity = 0.9f;
+
+	Unity.Mathematics.Random rand = new Unity.Mathematics.Random(12345);
+
+	Cell SimulateCell (int2 pos) {
+		Cell c = cells.Array[pos.y, pos.x];
+		
+		Cell l = GetNeighbor(pos + int2(-1,0));
+		Cell r = GetNeighbor(pos + int2(+1,0));
+		Cell b = GetNeighbor(pos + int2(0,-1));
+		Cell t = GetNeighbor(pos + int2(0,+1));
+
+		switch (c.mat) {
+			case MaterialID.WATER: {
+				if (b.mat == MaterialID.AIR) { // Flowing down if possible
+
+					Swap(ref c, ref b);
+
+				} else if (l.mat == MaterialID.AIR || r.mat == MaterialID.AIR) { // Flowing to sides
+
+					if (rand.NextFloat() < WaterFluidity) {
+						if (rand.NextBool()) {
+							if (l.mat == MaterialID.AIR)
+								Swap(ref c, ref l);
+							else
+								Swap(ref c, ref r);
+						} else {
+							if (r.mat == MaterialID.AIR)
+								Swap(ref c, ref r);
+							else
+								Swap(ref c, ref l);
+						}
+					}
+				}
+			} break;
+
+			default: break;
+		}
+		
+		SetNeighbor(pos + int2(-1,0), l);
+		SetNeighbor(pos + int2(+1,0), r);
+		SetNeighbor(pos + int2(0,-1), b);
+		SetNeighbor(pos + int2(0,+1), t);
+
+		return c;
 	}
 }

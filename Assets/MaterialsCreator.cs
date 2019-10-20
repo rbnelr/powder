@@ -48,7 +48,7 @@ public class MaterialsCreator : MonoBehaviour {
 			Materials = new MaterialInfo[types.Length];
 
 			for (int i=0; i<types.Length; ++i) {
-				Materials[i] = i < min(types.Length, Materials.Length) ? old[i] : new MaterialInfo();
+				Materials[i] = i < min(types.Length, old.Length) ? old[i] : new MaterialInfo();
 			}
 		}
 		
