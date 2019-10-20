@@ -93,7 +93,7 @@ public class MouseTool : MonoBehaviour {
 			for (int y=a.y; y<b.y; ++y) {
 				for (int x=a.x; x<b.x; ++x) {
 					if (distance(float2(x,y) + 0.5f, center) <= radius + 0.2f)
-						Sim.cells.Array[y,x] = new PowderSim.Cell { mat = Type };
+						Sim.cells.Array[y,x] = new PowderSim.Cell { mat = Type, amount = Type == PowderSim.MaterialID.AIR ? 0f : 1f, flow = Vector2.zero };
 				}
 			}
 

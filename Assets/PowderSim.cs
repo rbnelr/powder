@@ -70,7 +70,13 @@ public class PowderSim : MonoBehaviour {
 	public struct Cell {
 
 		public MaterialID mat;
-		public bool moved;
+
+		public float amount;
+
+		[NonSerialized]
+		public Vector2 flow;
+		[NonSerialized]
+		public float pressure;
 
 		public Type type => Types[(int)mat];
 		public float density => Density[(int)mat];
@@ -153,7 +159,7 @@ public class PowderSim : MonoBehaviour {
 	void clear () {
 		for (int y=0; y<Resolution.y; ++y) {
 			for (int x=0; x<Resolution.x; ++x) {
-				cells.Array[y,x] = new Cell { mat = MaterialID.AIR };
+				cells.Array[y,x] = new Cell { mat = MaterialID.AIR, amount = 0, flow = Vector2.zero };
 			}
 		}
 		Clear = false;
@@ -204,6 +210,33 @@ public class PowderSim : MonoBehaviour {
 
 	int2 TexSize => int2(MaterialTexArray.width, MaterialTexArray.height);
 
+	public Gradient DebugGradient;
+	public float DebugVelocityMax = 10;
+
+	void OnDrawGizmos () {
+		if (cells == null) return;
+
+		float2 pos = float2(transform.position.x,transform.position.y);
+		float2 sz = float2(transform.localScale.x,transform.localScale.y);
+
+		for (int y=0; y<Resolution.y; ++y) {
+			for (int x=0; x<Resolution.x; ++x) {
+				float3 center = float3((float2(x,y) + .5f) * sz / Resolution - sz/2 + pos, -.2f);
+				float3 size = float3(sz, sz.y) / int3(Resolution, Resolution.y) * .5f;
+
+				float amount = cells.Array[y,x].amount / 2f;
+				Gizmos.color = DebugGradient.Evaluate(amount);
+				Gizmos.DrawCube(center, size * amount);
+				
+				center += float3(0,0, .1f);
+
+				float2 vel = cells.Array[y,x].flow / DebugVelocityMax;
+				Gizmos.color = DebugGradient.Evaluate(length(vel));
+				Gizmos.DrawLine(center, center + float3(vel,0) * size);
+			}
+		}
+	}
+
 	void DrawCells () {
 
 		MeshRenderer.sharedMaterial.SetTexture("_CellsTex", texture);
@@ -232,7 +265,6 @@ public class PowderSim : MonoBehaviour {
 				var c = cells.Array[y,x];
 				Pixels[y * Resolution.x + x] = (byte)c.mat;
 
-				c.moved = false;
 				cells.Array[y,x] = c;
 			}
 		}
@@ -246,126 +278,101 @@ public class PowderSim : MonoBehaviour {
 	Unity.Mathematics.Random rand = new Unity.Mathematics.Random(12345);
 
 	void Simulate () {
-		for (int y=0; y<Resolution.y; ++y) {
-			for (int x=0; x<Resolution.x; ++x) {
-				Down(int2(x,y));
-			}
-		}
-
-		for (int y=0; y<Resolution.y; ++y) {
-			for (int x=0; x<Resolution.x; ++x) {
-				DiagonalLeft(int2(x,y));
-			}
-			for (int x=Resolution.x-1; x>=0; --x) {
-				DiagonalRight(int2(x,y));
-			}
-		}
+		float dt = min(1f/60, Time.deltaTime);
 		
 		for (int y=0; y<Resolution.y; ++y) {
 			for (int x=0; x<Resolution.x; ++x) {
-				Left(int2(x,y));
-			}
-			for (int x=Resolution.x-1; x>=0; --x) {
-				Right(int2(x,y));
+				GetNeighborhood(x,y, out Cell c, out Cell l, out Cell r, out Cell b, out Cell t);
+				
+				if (x == 8 && y == 12) {
+					int a = 5;
+				}
+
+				if (c.type == Type.LIQUID || c.type == Type.GAS) {
+					//c.flow = (float2)c.flow + float2(0,-1) * 9.81f * dt;
+
+					c.flow = new Vector2(0,0);
+					//if (l.type == Type.LIQUID) {
+					//	net_pressure.x += l.amount - c.amount;
+					//}
+					//if (r.type == Type.LIQUID) {
+					//	net_pressure.x -= r.amount - c.amount;
+					//}
+
+					if (b.type == Type.LIQUID || b.type == Type.GAS) {
+						c.flow.y += b.amount - c.amount;
+					}
+					if (t.type == Type.LIQUID || t.type == Type.GAS) {
+						c.flow.y -= t.amount - c.amount;
+					}
+
+					//c.flow = (float2)c.flow + net_pressure * 100 * dt;
+				} else {
+
+				}
+
+				SetNeighborhood(x,y, c, l, r, b, t);
 			}
 		}
 		
 		for (int y=0; y<Resolution.y; ++y) {
 			for (int x=0; x<Resolution.x; ++x) {
-				Down(int2(x,y));
+				GetNeighborhood(x,y, out Cell c, out Cell l, out Cell r, out Cell b, out Cell t);
+				
+				if (x == 8 && y == 12) {
+					int a = 5;
+				}
+
+				if (c.type == Type.LIQUID || c.type == Type.GAS) {
+					float delta = c.flow.y;
+					
+					if (b.type == Type.LIQUID || b.type == Type.GAS) {
+						delta += b.flow.y;
+					}
+					if (t.type == Type.LIQUID || t.type == Type.GAS) {
+						delta -= t.flow.y;
+					}
+
+					
+				} else {
+
+				}
+
+				SetNeighborhood(x,y, c, l, r, b, t);
 			}
 		}
+
 	}
 
-	void Down (int2 pos) {
-		GetNeighborhood(pos, out Cell c, out Cell l, out Cell r, out Cell b, out Cell t, out Cell lb, out Cell rb);
+	void GetNeighborhood (int x, int y, out Cell c, out Cell l, out Cell r, out Cell b, out Cell t) {
+		c = cells.Array[y, x];
+
+		l = x > 0              ? cells.Array[y,x-1] : new Cell { mat = MaterialID._NULL };
+		r = x < Resolution.x-1 ? cells.Array[y,x+1] : new Cell { mat = MaterialID._NULL };
+		b = y > 0              ? cells.Array[y-1,x] : new Cell { mat = MaterialID._NULL };
+		t = y < Resolution.y-1 ? cells.Array[y+1,x] : new Cell { mat = MaterialID._NULL };
 		
-		if (c.type != Type.SOLID && !c.moved && (b.type != Type.SOLID && c.density > b.density) && !b.moved) {
-			Swap(ref c, ref b);
-		}
-		
-		SetNeighborhood(pos, c, l, r, b, t, lb, rb);
+		//lb = pos.y > 0 && pos.x > 0              ? cells.Array[pos.y -1, pos.x -1] : new Cell { mat = MaterialID._NULL };
+		//rb = pos.y > 0 && pos.x < Resolution.x-1 ? cells.Array[pos.y -1, pos.x +1] : new Cell { mat = MaterialID._NULL };
 	}
-	void Left (int2 pos) {
-		GetNeighborhood(pos, out Cell c, out Cell l, out Cell r, out Cell b, out Cell t, out Cell lb, out Cell rb);
-		if (c.mat == MaterialID.AIR) return;
+	void SetNeighborhood (int x, int y, Cell c, Cell l, Cell r, Cell b, Cell t) {
+		cells.Array[y, x] = c;
 
-		float MoveLeftChance = WaterFluidity / 2;
+		if (x > 0             ) cells.Array[y,x-1] = l;
+		if (x < Resolution.x-1) cells.Array[y,x+1] = r;
+		if (y > 0             ) cells.Array[y-1,x] = b;
+		if (y < Resolution.y-1) cells.Array[y+1,x] = t;
 
-		if ((c.type == Type.LIQUID || c.type == Type.GAS) && !c.moved && (l.type == Type.LIQUID || l.type == Type.GAS) && c.mat != l.mat && !l.moved && rand.NextFloat() < MoveLeftChance) {
-			Swap(ref c, ref l);
-		}
-
-		SetNeighborhood(pos, c, l, r, b, t, lb, rb);
-	}
-	void Right (int2 pos) {
-		GetNeighborhood(pos, out Cell c, out Cell l, out Cell r, out Cell b, out Cell t, out Cell lb, out Cell rb);
-		if (c.mat == MaterialID.AIR) return;
-		
-		float MoveRightChance = WaterFluidity / 2;
-		float DontMoveChance = 1f - WaterFluidity;
-		float MoveChance = MoveRightChance / (MoveRightChance + DontMoveChance);
-
-		if ((c.type == Type.LIQUID || c.type == Type.GAS) && !c.moved && (r.type == Type.LIQUID || r.type == Type.GAS) && c.mat != r.mat && !r.moved && rand.NextFloat() < MoveChance) {
-			Swap(ref c, ref r);
-		}
-		
-		SetNeighborhood(pos, c, l, r, b, t, lb, rb);
-	}
-	void DiagonalLeft (int2 pos) {
-		GetNeighborhood(pos, out Cell c, out Cell l, out Cell r, out Cell b, out Cell t, out Cell lb, out Cell rb);
-		
-		float MoveLeftChance = WaterFluidity / 2;
-
-		if (c.type == Type.POWDER && !c.moved && (lb.type != Type.SOLID && c.density > lb.density) && !lb.moved && rand.NextFloat() < MoveLeftChance) {
-			Swap(ref c, ref lb);
-		}
-		
-		SetNeighborhood(pos, c, l, r, b, t, lb, rb);
-	}
-	void DiagonalRight (int2 pos) {
-		GetNeighborhood(pos, out Cell c, out Cell l, out Cell r, out Cell b, out Cell t, out Cell lb, out Cell rb);
-		
-		float MoveRightChance = WaterFluidity / 2;
-		float DontMoveChance = 1f - WaterFluidity;
-		float MoveChance = MoveRightChance / (MoveRightChance + DontMoveChance);
-
-		if (c.type == Type.POWDER && !c.moved && (rb.type != Type.SOLID && c.density > rb.density) && !rb.moved && rand.NextFloat() < MoveChance) {
-			Swap(ref c, ref rb);
-		}
-		
-		SetNeighborhood(pos, c, l, r, b, t, lb, rb);
+		//if (pos.y > 0 && pos.x > 0             ) cells.Array[pos.y -1, pos.x -1] = lb;
+		//if (pos.y > 0 && pos.x < Resolution.x-1) cells.Array[pos.y -1, pos.x +1] = rb;
 	}
 
-	void GetNeighborhood (int2 pos, out Cell c, out Cell l, out Cell r, out Cell b, out Cell t, out Cell lb, out Cell rb) {
-		c = cells.Array[pos.y, pos.x];
-
-		l = pos.x > 0              ? cells.Array[pos.y, pos.x -1] : new Cell { mat = MaterialID._NULL };
-		r = pos.x < Resolution.x-1 ? cells.Array[pos.y, pos.x +1] : new Cell { mat = MaterialID._NULL };
-		b = pos.y > 0              ? cells.Array[pos.y -1, pos.x] : new Cell { mat = MaterialID._NULL };
-		t = pos.y < Resolution.y-1 ? cells.Array[pos.y +1, pos.x] : new Cell { mat = MaterialID._NULL };
-		
-		lb = pos.y > 0 && pos.x > 0              ? cells.Array[pos.y -1, pos.x -1] : new Cell { mat = MaterialID._NULL };
-		rb = pos.y > 0 && pos.x < Resolution.x-1 ? cells.Array[pos.y -1, pos.x +1] : new Cell { mat = MaterialID._NULL };
-	}
-	void SetNeighborhood (int2 pos, Cell c, Cell l, Cell r, Cell b, Cell t, Cell lb, Cell rb) {
-		cells.Array[pos.y, pos.x] = c;
-
-		if (pos.x > 0             ) cells.Array[pos.y, pos.x -1] = l;
-		if (pos.x < Resolution.x-1) cells.Array[pos.y, pos.x +1] = r;
-		if (pos.y > 0             ) cells.Array[pos.y -1, pos.x] = b;
-		if (pos.y < Resolution.y-1) cells.Array[pos.y +1, pos.x] = t;
-
-		if (pos.y > 0 && pos.x > 0             ) cells.Array[pos.y -1, pos.x -1] = lb;
-		if (pos.y > 0 && pos.x < Resolution.x-1) cells.Array[pos.y -1, pos.x +1] = rb;
-	}
-
-	void Swap (ref Cell a, ref Cell b) {
-		var tmp = a;
-		a = b;
-		b = tmp;
-
-		a.moved = true && a.mat != MaterialID.AIR; // air can move freely to improve falling fluids
-		b.moved = true && b.mat != MaterialID.AIR;
-	}
+	//void Swap (ref Cell a, ref Cell b) {
+	//	var tmp = a;
+	//	a = b;
+	//	b = tmp;
+	//
+	//	a.moved = true && a.mat != MaterialID.AIR; // air can move freely to improve falling fluids
+	//	b.moved = true && b.mat != MaterialID.AIR;
+	//}
 }
