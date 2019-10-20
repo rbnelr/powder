@@ -4,7 +4,6 @@
     {
 		_MaterialTexArray ("MaterialTexArray", 2DArray) = "" {}
 		_ShadingTexArray ("ShadingTex", 2DArray) = "" {}
-		_DisplacementTex ("DisplacementTex", 2D) = "" {}
     }
     SubShader
     {
@@ -47,11 +46,6 @@
 			UNITY_DECLARE_TEX2DARRAY(_ShadingTexArray);
 
 			sampler2D _CellsTex;
-			sampler2D _DisplacementTex;
-
-			float2 _DisplacementScale;
-			float2 _DisplacementTexOffset;
-			float _DisplacementStrength;
 
             v2f vert (appdata v)
             {
@@ -87,9 +81,7 @@
 
 				clip(tex_index); // Invisible
 
-				float displacement = tex2D(_DisplacementTex, i.uv * _DisplacementScale + _DisplacementTexOffset) * _DisplacementStrength;
-
-				float4 col = UNITY_SAMPLE_TEX2DARRAY(_MaterialTexArray, float3(i.uv * _TexScale + displacement, tex_index));
+				float4 col = UNITY_SAMPLE_TEX2DARRAY(_MaterialTexArray, float3(i.uv * _TexScale, tex_index));
 				
 				col *= calc_shading(i, mat_id, shading_mode);
 
