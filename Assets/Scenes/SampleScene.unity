@@ -497,8 +497,8 @@ MonoBehaviour:
     y: 100
   TexScale: 2
   ShadingScale: 2
-  LoadFileOnStart: D:\coding\powder\save_01.json
-  Reset: 0
+  LoadFileOnStart: D:\coding\powder\PowderSim\Assets\save_01.json
+  Reset: 1
   Clear: 0
   SaveDialog: 0
   LoadDialog: 0
@@ -529,7 +529,7 @@ MonoBehaviour:
   - 0
   - 0
   - 0
-  WaterFluidity: 0.8
+  WaterFluidity: 0.9
 --- !u!23 &828722057
 MeshRenderer:
   m_ObjectHideFlags: 0
