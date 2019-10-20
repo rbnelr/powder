@@ -497,12 +497,12 @@ MonoBehaviour:
     y: 100
   TexScale: 2
   ShadingScale: 2
-  LoadFileOnStart: D:\coding\powder\PowderSim\Assets\save_02.json
+  LoadFileOnStart: D:\coding\powder\PowderSim\Assets\save_01.json
   Reset: 1
   Clear: 0
   SaveDialog: 0
   LoadDialog: 0
-  PauseSimulation: 1
+  PauseSimulation: 0
   StepSimulation: 0
   Background: {fileID: 734376513}
   MaterialTexArray: {fileID: 18700000, guid: 026173e83a2664846a316281ac3c6e6e, type: 2}
@@ -529,8 +529,7 @@ MonoBehaviour:
   - 0
   - 0
   - 0
-  StartChance: 0.9
-  StopChance: 0
+  WaterFluidity: 0.9
 --- !u!23 &828722057
 MeshRenderer:
   m_ObjectHideFlags: 0
