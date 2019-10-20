@@ -518,8 +518,9 @@ MonoBehaviour:
   ShadingScale: 2
   LoadFileOnStart: D:\coding\powder\water_test.json
   Reset: 1
-  Save: 0
-  Load: 0
+  Clear: 1
+  SaveDialog: 0
+  LoadDialog: 0
   Background: {fileID: 734376513}
   MaterialTexArray: {fileID: 18700000, guid: 026173e83a2664846a316281ac3c6e6e, type: 2}
   ShadingTexArray: {fileID: 18700000, guid: 8f787ff5c426e584b8a2967437e38614, type: 2}
@@ -541,7 +542,7 @@ MonoBehaviour:
   - 1
   - 1
   - 0
-  WaterFluidity: 0.9
+  WaterFluidity: 39
 --- !u!23 &828722057
 MeshRenderer:
   m_ObjectHideFlags: 0

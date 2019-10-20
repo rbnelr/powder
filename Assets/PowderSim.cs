@@ -52,24 +52,13 @@ public class PowderSim : MonoBehaviour {
 	public string LoadFileOnStart = @"D:\coding\powder\save_00.json";
 
 	public bool Reset = true;
-	public bool Save = false;
-	public bool Load = false;
+	public bool Clear, SaveDialog, LoadDialog;
 
 	public GameObject Background;
 
 	MeshRenderer MeshRenderer;
 	private void Start () {
 		MeshRenderer = GetComponent<MeshRenderer>();
-
-		if (LoadFileOnStart.Length != 0) {
-			if (Serialize.LoadFromFile("cells", LoadFileOnStart, out Cells cells)) {
-				Resolution = cells.GetResolution();
-				this.cells = cells;
-
-				CreateTexture();
-			}
-			Reset = false;
-		}
 	}
 	void Update () {
 		Resolution = max(Resolution, 1);
@@ -78,31 +67,54 @@ public class PowderSim : MonoBehaviour {
 			Resize();
 
 		if (Reset)
+			reset();
+
+		if (Clear)
 			clear();
-		if (Save || (Input.GetKey(KeyCode.LeftControl) && Input.GetKeyDown(KeyCode.S)))
-			Serialize.SaveToFileDialog("cells", cells);
-		if (Load || (Input.GetKey(KeyCode.LeftControl) && Input.GetKeyDown(KeyCode.L))) {
-			if (Serialize.LoadFromFileDialog("cells", out Cells cells)) {
-				Resolution = cells.GetResolution();
-				this.cells = cells;
-			}
-		}
-		
-		Reset = false;
-		Save = false;
-		Load = false;
+
+		if (SaveDialog || (Input.GetKey(KeyCode.LeftControl) && Input.GetKeyDown(KeyCode.S)))
+			save();
+
+		if (LoadDialog || (Input.GetKey(KeyCode.LeftControl) && Input.GetKeyDown(KeyCode.L)))
+			load();
 		
 		Simulate();
 
 		UpdateTexture();
 	}
 	
+	void reset () {
+		if (LoadFileOnStart.Length != 0) {
+			if (Serialize.LoadFromFile("cells", LoadFileOnStart, out Cells cells)) {
+				Resolution = cells.GetResolution();
+				this.cells = cells;
+
+				CreateTexture();
+			}
+		} else {
+			Clear = true;
+		}
+		Reset = false;
+	}
 	void clear () {
 		for (int y=0; y<Resolution.y; ++y) {
 			for (int x=0; x<Resolution.x; ++x) {
 				cells.Array[y,x] = new Cell { mat = MaterialID.AIR };
 			}
 		}
+		Clear = false;
+	}
+	
+	void save () {
+		Serialize.SaveToFileDialog("cells", cells);
+		SaveDialog = false;
+	}
+	void load () {
+		if (Serialize.LoadFromFileDialog("cells", out Cells cells)) {
+			Resolution = cells.GetResolution();
+			this.cells = cells;
+		}
+		LoadDialog = false;
 	}
 
 	void CreateTexture () {
