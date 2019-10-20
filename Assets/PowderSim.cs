@@ -125,17 +125,30 @@ public class PowderSim : MonoBehaviour {
 		CreateTexture();
 	}
 
+	public Texture2D DisplacementTex;
 	public Texture2DArray MaterialTexArray;
 	public Texture2DArray ShadingTexArray;
 	public float[] MaterialTextureIndecies;
 	public float[] MaterialShadingModes;
 
+	int2 TexSize => int2(MaterialTexArray.width, MaterialTexArray.height);
+
+	public float DisplacementStrength = 1;
+	public float DisplacementAnimTime = 0;
+	public float DisplacementAnimSpeed = 1;
+
 	void UpdateTexture () {
 		
+		DisplacementAnimTime += DisplacementAnimSpeed * Time.deltaTime;
+		DisplacementAnimTime = DisplacementAnimTime % 1f;
+
 		MeshRenderer.sharedMaterial.SetTexture("_CellsTex", texture);
-		MeshRenderer.sharedMaterial.SetVector("_Resolution", float4(Resolution, 0, 0));
-		MeshRenderer.sharedMaterial.SetFloat("_TexScale", 64f / (float)TexScale);
-		MeshRenderer.sharedMaterial.SetFloat("_ShadingScale", 1f / (float)ShadingScale);
+		MeshRenderer.sharedMaterial.SetTexture("_DisplacementTex", DisplacementTex);
+		MeshRenderer.sharedMaterial.SetVector("_TexScale",				float4((float2)Resolution * TexScale / TexSize, 0,0));
+		MeshRenderer.sharedMaterial.SetVector("_DisplacementScale",		float4((float2)Resolution * TexScale / TexSize, 0,0));
+		MeshRenderer.sharedMaterial.SetVector("_DisplacementTexOffset", float4(float2(0,1) * DisplacementAnimTime, 0,0));
+		MeshRenderer.sharedMaterial.SetFloat("_DisplacementStrength", DisplacementStrength);
+		MeshRenderer.sharedMaterial.SetVector("_ShadingScale",			float4(1f / ((float2)Resolution * ShadingScale), 0,0));
 		
 		MeshRenderer.sharedMaterial.SetTexture("_MaterialTexArray", MaterialTexArray);
 		MeshRenderer.sharedMaterial.SetTexture("_ShadingTexArray", ShadingTexArray);
