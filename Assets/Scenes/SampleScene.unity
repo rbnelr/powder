@@ -330,63 +330,52 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   Regenerate: 0
-  RematchArray: 0
   Sim: {fileID: 828722056}
   DefaultTexture: {fileID: 2800000, guid: 80409bf852e304f44ad0fa56837b61b4, type: 3}
   ShadingTextures:
   - {fileID: 2800000, guid: 5a034d2ab68f94b499ae626639370a5c, type: 3}
   - {fileID: 2800000, guid: f9128d4af46180441a0551a97d6b7986, type: 3}
   Materials:
-  - Name: AIR
+  - EnumName: _NULL
     Invisible: 1
-    Texture: {fileID: 2800000, guid: 80409bf852e304f44ad0fa56837b61b4, type: 3}
+    Texture: {fileID: 0}
     ShadingMode: 0
     TextureIndex: -1
-  - Name: WOOD
+  - EnumName: AIR
+    Invisible: 1
+    Texture: {fileID: 0}
+    ShadingMode: 0
+    TextureIndex: -1
+  - EnumName: WOOD
     Invisible: 0
     Texture: {fileID: 2800000, guid: d20d6081faa0b944890c1247a54aa832, type: 3}
     ShadingMode: 0
     TextureIndex: 0
-  - Name: STONE
+  - EnumName: STONE
     Invisible: 0
     Texture: {fileID: 2800000, guid: 7a81590d3efbd8e4880d37c29c1a09c3, type: 3}
     ShadingMode: 0
     TextureIndex: 1
-  - Name: WATER
+  - EnumName: WATER
     Invisible: 0
     Texture: {fileID: 2800000, guid: f77515a0d38642545884111c17bffdab, type: 3}
     ShadingMode: 0
     TextureIndex: 2
-  - Name: OIL
+  - EnumName: OIL
     Invisible: 0
     Texture: {fileID: 2800000, guid: 60465b7b109341d479ac431ba6860125, type: 3}
-    ShadingMode: 0
+    ShadingMode: 1
     TextureIndex: 3
-  - Name: STEAM
+  - EnumName: STEAM
     Invisible: 0
     Texture: {fileID: 2800000, guid: 4e4937a64312ad145acdb602c1fc124f, type: 3}
     ShadingMode: 1
     TextureIndex: 4
-  - Name: SMOKE
+  - EnumName: SMOKE
     Invisible: 0
     Texture: {fileID: 2800000, guid: 2a450241ed0a7864e96b38e813c8992f, type: 3}
-    ShadingMode: 1
+    ShadingMode: 0
     TextureIndex: 5
-  - Name: FLAME
-    Invisible: 0
-    Texture: {fileID: 2800000, guid: 80409bf852e304f44ad0fa56837b61b4, type: 3}
-    ShadingMode: 0
-    TextureIndex: 6
-  - Name: SAND
-    Invisible: 0
-    Texture: {fileID: 2800000, guid: 80409bf852e304f44ad0fa56837b61b4, type: 3}
-    ShadingMode: 0
-    TextureIndex: 0
-  - Name: TEST
-    Invisible: 0
-    Texture: {fileID: 2800000, guid: 80409bf852e304f44ad0fa56837b61b4, type: 3}
-    ShadingMode: 0
-    TextureIndex: 0
 --- !u!4 &705589378
 Transform:
   m_ObjectHideFlags: 0
@@ -526,13 +515,13 @@ MonoBehaviour:
   ShadingTexArray: {fileID: 18700000, guid: 8f787ff5c426e584b8a2967437e38614, type: 2}
   MaterialTextureIndecies:
   - -1
+  - -1
   - 0
   - 1
   - 2
   - 3
   - 4
   - 5
-  - 6
   MaterialShadingModes:
   - 0
   - 0
@@ -542,7 +531,7 @@ MonoBehaviour:
   - 1
   - 1
   - 0
-  WaterFluidity: 39
+  WaterFluidity: 0.7
 --- !u!23 &828722057
 MeshRenderer:
   m_ObjectHideFlags: 0

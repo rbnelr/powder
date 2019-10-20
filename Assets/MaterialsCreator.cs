@@ -6,28 +6,24 @@ using UnityEngine;
 using static Unity.Mathematics.math;
 using Unity.Mathematics;
 using UnityEditor;
+using System.ComponentModel;
 
 [ExecuteInEditMode]
 public class MaterialsCreator : MonoBehaviour {
 	
 	public bool Regenerate = false;
-	public bool RematchArray = false;
 
 	void Update () {
 		if (Regenerate) {
 			Generate();
 			Regenerate = false;
 		}
-		if (RematchArray) {
-			MatchArray();
-			RematchArray = false;
-		}
 	}
 
 	[Serializable]
 	public class MaterialInfo {
-		public string Name;
-		public bool Invisible = false;
+		public string EnumName;
+
 		public Texture2D Texture = null;
 		public int ShadingMode = 0;
 		public int TextureIndex;
@@ -40,31 +36,17 @@ public class MaterialsCreator : MonoBehaviour {
 	public Texture2D[] ShadingTextures;
 	public MaterialInfo[] Materials;
 
-	void MatchArray () {
-		var types = typeof(PowderSim.MaterialID).GetEnumNames();
-
-		if (types.Length != Materials.Length) {
-			var old = Materials;
-			Materials = new MaterialInfo[types.Length];
-
-			for (int i=0; i<types.Length; ++i) {
-				Materials[i] = i < min(types.Length, old.Length) ? old[i] : new MaterialInfo();
-			}
-		}
-		
-		for (int i=0; i<types.Length; ++i) {
-			Materials[i].Name = types[i];
-			if (Materials[i].Texture == null)
-				Materials[i].Texture = DefaultTexture;
-		}
-	}
 	void Generate () {
+		var mats = typeof(PowderSim.MaterialID).GetEnumNames().Select(enum_name =>
+			Materials.FirstOrDefault(m => m.EnumName == enum_name) ?? new MaterialInfo { EnumName = enum_name, Texture = DefaultTexture }
+		).ToArray();
+
 		var Textures = new List<Texture2D>();
 
-		foreach (var mat in Materials) {
+		foreach (var mat in mats) {
 			mat.TextureIndex = -1;
 
-			if (!mat.Invisible) {
+			if (mat.Texture != null) {
 				mat.TextureIndex = Textures.IndexOf(mat.Texture);
 				if (mat.TextureIndex < 0) {
 					mat.TextureIndex = Textures.Count;
@@ -76,8 +58,8 @@ public class MaterialsCreator : MonoBehaviour {
 		Sim.MaterialTexArray = TextureArrayCreator.CreateTextureArray(Textures.ToArray(), "MaterialsTexArray");
 		Sim.ShadingTexArray = TextureArrayCreator.CreateTextureArray(ShadingTextures.ToArray(), "ShadingTexArray");
 		
-		Sim.MaterialTextureIndecies = Materials.Select(x => (float)x.TextureIndex).ToArray();
-		Sim.MaterialShadingModes = Materials.Select(x => (float)x.ShadingMode).ToArray();
+		Sim.MaterialTextureIndecies = mats.Select(x => (float)x.TextureIndex).ToArray();
+		Sim.MaterialShadingModes = mats.Select(x => (float)x.ShadingMode).ToArray();
 		
 		AssetDatabase.CreateAsset(Sim.MaterialTexArray, "Assets/MaterialsTexArray.asset");
 		AssetDatabase.CreateAsset(Sim.ShadingTexArray, "Assets/ShadingTexArray.asset");

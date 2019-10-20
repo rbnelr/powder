@@ -4,10 +4,15 @@ using System.Collections.Generic;
 using UnityEngine;
 using static Unity.Mathematics.math;
 using Unity.Mathematics;
+using Newtonsoft.Json;
+using Newtonsoft.Json.Converters;
 
 public class PowderSim : MonoBehaviour {
 	
+    [JsonConverter(typeof(StringEnumConverter))]
 	public enum MaterialID {
+		_NULL,
+
 		AIR,
 		WOOD,
 		STONE,
@@ -17,9 +22,20 @@ public class PowderSim : MonoBehaviour {
 		SMOKE,
 		FLAME,
 		SAND,
-
-		_NULL=255
 	}
+	public readonly bool[] IsFluid = new bool[] {
+		false,
+
+		true,
+		false,
+		false,
+		true,
+		true,
+		true,
+		true,
+		false,
+		false,
+	};
 	
 	[Serializable]
 	public struct Cell {
@@ -54,6 +70,8 @@ public class PowderSim : MonoBehaviour {
 	public bool Reset = true;
 	public bool Clear, SaveDialog, LoadDialog;
 
+	public bool PauseSimulation = false;
+
 	public GameObject Background;
 
 	MeshRenderer MeshRenderer;
@@ -78,7 +96,8 @@ public class PowderSim : MonoBehaviour {
 		if (LoadDialog || (Input.GetKey(KeyCode.LeftControl) && Input.GetKeyDown(KeyCode.L)))
 			load();
 		
-		Simulate();
+		if (!PauseSimulation)
+			Simulate();
 
 		UpdateTexture();
 	}
@@ -132,10 +151,11 @@ public class PowderSim : MonoBehaviour {
 
 		clear();
 		
-		// copy old cells where possible
-		for (int y=0; y<min(cells.GetResolution().y, old_cells.GetResolution().y); ++y) {
-			for (int x=0; x<min(cells.GetResolution().x, old_cells.GetResolution().x); ++x) {
-				cells.Array[y,x] = old_cells.Array[y,x];
+		if (old_cells != null) { // copy old cells where possible
+			for (int y=0; y<min(cells.GetResolution().y, old_cells.GetResolution().y); ++y) {
+				for (int x=0; x<min(cells.GetResolution().x, old_cells.GetResolution().x); ++x) {
+					cells.Array[y,x] = old_cells.Array[y,x];
+				}
 			}
 		}
 
@@ -183,18 +203,9 @@ public class PowderSim : MonoBehaviour {
 	}
 
 	void Simulate () {
-		// Anti water flow bias (water bubbles always flow to the left first if we update left to right)
-		if (rand.NextBool()) {
-			for (int y=0; y<Resolution.y; ++y) {
-				for (int x=0; x<Resolution.x; ++x) {
-					cells.Array[y,x] = SimulateCell(int2(x,y));
-				}
-			}
-		} else {
-			for (int y=0; y<Resolution.y; ++y) {
-				for (int x=Resolution.x-1; x>=0; --x) {
-					cells.Array[y,x] = SimulateCell(int2(x,y));
-				}
+		for (int y=0; y<Resolution.y; ++y) {
+			for (int x=0; x<Resolution.x; ++x) {
+				cells.Array[y,x] = SimulateCell(int2(x,y));
 			}
 		}
 	}
@@ -227,20 +238,20 @@ public class PowderSim : MonoBehaviour {
 
 		switch (c.mat) {
 			case MaterialID.WATER: {
-				if (b.mat == MaterialID.AIR) { // Flowing down if possible
+				if (IsFluid[(int)b.mat]) { // Flowing down if possible
 
 					Swap(ref c, ref b);
 
-				} else if (l.mat == MaterialID.AIR || r.mat == MaterialID.AIR) { // Flowing to sides
+				} else if (IsFluid[(int)l.mat] || IsFluid[(int)r.mat]) { // Flowing to sides
 
 					if (rand.NextFloat() < WaterFluidity) {
 						if (rand.NextBool()) {
-							if (l.mat == MaterialID.AIR)
+							if (IsFluid[(int)l.mat])
 								Swap(ref c, ref l);
 							else
 								Swap(ref c, ref r);
 						} else {
-							if (r.mat == MaterialID.AIR)
+							if (IsFluid[(int)r.mat])
 								Swap(ref c, ref r);
 							else
 								Swap(ref c, ref l);
